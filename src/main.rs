@@ -6,7 +6,7 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "eframe template",
+        "Plinit",
         native_options,
         Box::new(|cc| Box::new(plinit::PlinitApp::new(cc))),
     )
