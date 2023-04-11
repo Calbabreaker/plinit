@@ -4,11 +4,15 @@ fn main() -> eframe::Result<()> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
-    let native_options = eframe::NativeOptions::default();
+    let options = eframe::NativeOptions {
+        drag_and_drop_support: true,
+        ..Default::default()
+    };
+
     eframe::run_native(
         "Plinit",
-        native_options,
-        Box::new(|cc| Box::new(plinit::PlinitApp::new(cc))),
+        options,
+        Box::new(|_cc| Box::new(plinit::PlinitApp::default())),
     )
 }
 

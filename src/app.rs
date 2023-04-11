@@ -1,28 +1,48 @@
+use std::path::PathBuf;
+
 use crate::PlinitImage;
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
+#[derive(Debug)]
+pub struct ViewState {
+    pub zoom: f32,
+    pub offset: egui::Vec2,
+}
+
+impl Default for ViewState {
+    fn default() -> Self {
+        Self {
+            zoom: 1.,
+            offset: egui::Vec2::ZERO,
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct PlinitApp {
-    #[serde(skip)]
     images: Vec<PlinitImage>,
+    view_state: ViewState,
 }
 
 impl PlinitApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+    pub fn load_image(&mut self, ctx: &egui::Context, path: &Option<PathBuf>) {
+        if let Some(path) = path {
+            let path = path.to_str().unwrap_or("");
+            match PlinitImage::load(ctx, path) {
+                Ok(image) => self.images.push(image),
+                Err(err) => log::error!("Failed to load {} - {}", path, err),
+            }
         }
-
-        Self::default()
     }
 }
 
 impl eframe::App for PlinitApp {
-    // fn save(&mut self, storage: &mut dyn eframe::Storage) {
-    //     eframe::set_value(storage, eframe::APP_KEY, self);
-    // }
-
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::panel::CentralPanel::default().show(ctx, |ui| {
+            for image in &mut self.images {
+                image.update(ui, &self.view_state);
+            }
+        });
+
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
@@ -33,24 +53,21 @@ impl eframe::App for PlinitApp {
                     }
 
                     if ui.button("Import Image").clicked() {
-                        if let Some(path) = rfd::FileDialog::new().pick_file() {
-                            let path = path.to_str().unwrap_or("");
-                            match PlinitImage::load(ctx, path) {
-                                Ok(image) => self.images.push(image),
-                                Err(err) => log::error!("Failed to load {} - {}", path, err),
-                            }
-                        }
+                        self.load_image(ctx, &rfd::FileDialog::new().pick_file());
                     }
                 });
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            for image in &mut self.images {
-                image.update(ui);
+        ctx.input(|input| {
+            self.view_state.zoom *= input.zoom_delta();
+            for file in &input.raw.dropped_files {
+                self.load_image(ctx, &file.path);
             }
 
-            egui::warn_if_debug_build(ui);
+            if input.pointer.middle_down() || input.pointer.secondary_down() {
+                self.view_state.offset += input.pointer.delta();
+            }
         });
     }
 }

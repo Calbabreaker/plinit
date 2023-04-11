@@ -23,11 +23,12 @@ impl PlinitImage {
         })
     }
 
-    pub fn update(&mut self, ui: &mut egui::Ui) {
-        let size = self.texture.size_vec2();
+    pub fn update(&mut self, ui: &mut egui::Ui, view: &crate::ViewState) {
+        let size = self.texture.size_vec2() * view.zoom;
+        let position = self.position + view.offset;
         if ui
             .put(
-                egui::Rect::from_center_size(self.position, size),
+                egui::Rect::from_center_size(position, size),
                 egui::Image::new(self.texture.id(), size)
                     .rotate(f32::to_radians(self.rotation), egui::Vec2::splat(0.))
                     .sense(egui::Sense::click_and_drag()),
@@ -35,7 +36,7 @@ impl PlinitImage {
             .dragged_by(egui::PointerButton::Primary)
         {
             if let Some(pos) = ui.ctx().pointer_latest_pos() {
-                self.position = pos;
+                self.position = pos - view.offset;
             }
         }
     }
